@@ -4,6 +4,19 @@
   "description": "TypeScript client library for PocketSmith API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joho/pocketsmith-ts.git"
+  },
+  "homepage": "https://github.com/joho/pocketsmith-ts#readme",
+  "bugs": {
+    "url": "https://github.com/joho/pocketsmith-ts/issues"
+  },
   "scripts": {
     "build": "tsc",
     "download-spec": "curl -o ./specs/pocketsmith-openapi.json https://raw.githubusercontent.com/pocketsmith/api/master/openapi.json",
