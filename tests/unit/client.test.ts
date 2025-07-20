@@ -1,4 +1,4 @@
-import { createPocketSmithClient } from '../../src';
+import { createPocketSmithClient, serializeError } from '../../src';
 
 describe('PocketSmith Client Unit Tests', () => {
   describe('Client Creation', () => {
@@ -55,6 +55,46 @@ describe('PocketSmith Client Unit Tests', () => {
       expect(typeof client.OPTIONS).toBe('function');
       expect(typeof client.HEAD).toBe('function');
       expect(typeof client.PATCH).toBe('function');
+    });
+  });
+
+  describe('Convenience Methods', () => {
+    test('should include transaction convenience methods', () => {
+      const client = createPocketSmithClient({
+        apiKey: 'test-api-key',
+      });
+
+      expect(client.transactions).toBeDefined();
+      expect(client.transactions.getByAccount).toBeDefined();
+      expect(client.transactions.getByTransactionAccount).toBeDefined();
+      expect(typeof client.transactions.getByAccount).toBe('function');
+      expect(typeof client.transactions.getByTransactionAccount).toBe('function');
+    });
+  });
+
+  describe('Error Serialization', () => {
+    test('should serialize string errors', () => {
+      const error = 'Simple error message';
+      expect(serializeError(error)).toBe('Simple error message');
+    });
+
+    test('should serialize object errors', () => {
+      const error = { message: 'Error occurred', code: 500 };
+      const serialized = serializeError(error);
+      expect(serialized).toContain('Error occurred');
+      expect(serialized).toContain('500');
+    });
+
+    test('should handle null/undefined errors', () => {
+      expect(serializeError(null)).toBe('null');
+      expect(serializeError(undefined)).toBe('undefined');
+    });
+
+    test('should handle non-serializable objects', () => {
+      const circularRef: any = {};
+      circularRef.self = circularRef;
+      const result = serializeError(circularRef);
+      expect(typeof result).toBe('string');
     });
   });
 });

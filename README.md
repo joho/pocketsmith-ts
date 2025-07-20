@@ -62,9 +62,61 @@ const client = createPocketSmithClient({
 });
 ```
 
+## Understanding Accounts vs Transaction Accounts
+
+PocketSmith has two types of account endpoints that serve different purposes:
+
+### Accounts (`/accounts/{id}`)
+**High-level account groupings** that represent conceptual account containers. These are used for organizing and categorizing your financial structure.
+
+```typescript
+// Fetch all accounts for a user
+const { data: accounts } = await client.GET('/users/{id}/accounts', {
+  params: { path: { id: userId } }
+});
+
+// Get specific account details
+const { data: account } = await client.GET('/accounts/{id}', {
+  params: { path: { id: accountId } }
+});
+```
+
+### Transaction Accounts (`/transaction_accounts/{id}`)
+**Individual accounts where transactions are actually posted**. These represent the actual bank accounts, credit cards, etc. where money moves in and out.
+
+```typescript
+// Fetch transaction accounts for an account
+const { data: transactionAccounts } = await client.GET('/accounts/{id}/transaction_accounts', {
+  params: { path: { id: accountId } }
+});
+
+// Get transactions for a specific transaction account
+const { data: transactions } = await client.GET('/transaction_accounts/{id}/transactions', {
+  params: { 
+    path: { id: transactionAccountId },
+    query: { 
+      start_date: '2024-01-01',
+      end_date: '2024-12-31' 
+    }
+  }
+});
+
+// Create a transaction in a specific transaction account
+const { data: transaction } = await client.POST('/transaction_accounts/{id}/transactions', {
+  params: { path: { id: transactionAccountId } },
+  body: {
+    payee: 'Coffee Shop',
+    amount: -4.50,
+    date: '2024-01-15'
+  }
+});
+```
+
 ## Examples
 
 ### Fetching Transactions
+
+#### Using Standard API Endpoints
 
 ```typescript
 const { data: transactions } = await client.GET('/users/{id}/transactions', {
@@ -77,6 +129,24 @@ const { data: transactions } = await client.GET('/users/{id}/transactions', {
       type: 'debit'
     }
   }
+});
+```
+
+#### Using Convenience Methods
+
+```typescript
+// Get transactions for a high-level account grouping
+const { data: accountTransactions } = await client.transactions.getByAccount(123, {
+  start_date: '2024-01-01',
+  end_date: '2024-12-31',
+  search: 'coffee'
+});
+
+// Get transactions for a specific transaction account (where transactions are posted)
+const { data: transactionAccountTransactions } = await client.transactions.getByTransactionAccount(456, {
+  start_date: '2024-01-01',
+  end_date: '2024-12-31',
+  type: 'debit'
 });
 ```
 
@@ -122,13 +192,18 @@ const { data: updated } = await client.PUT('/categories/{id}', {
 
 ## Error Handling
 
-The client returns a `{ data, error }` object for each request:
+The client returns a `{ data, error }` object for each request. For better error debugging, use the `serializeError` utility:
 
 ```typescript
+import { createPocketSmithClient, serializeError } from 'pocketsmith-ts';
+
+const client = createPocketSmithClient({ apiKey: 'your-key' });
 const { data, error } = await client.GET('/me');
 
 if (error) {
-  console.error('API Error:', error);
+  // Use serializeError to properly format errors (no more [object Object])
+  console.error('API Error:', serializeError(error));
+  console.error('Full error object:', error);
   // Handle error case
   return;
 }

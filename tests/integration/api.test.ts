@@ -1,4 +1,4 @@
-import { createPocketSmithClient } from '../../src';
+import { createPocketSmithClient, serializeError } from '../../src';
 
 describe('PocketSmith API Integration Tests', () => {
   let client: ReturnType<typeof createPocketSmithClient>;
@@ -173,6 +173,76 @@ describe('PocketSmith API Integration Tests', () => {
     });
   });
 
+  describe('Convenience Methods', () => {
+    let accountId: number;
+    let transactionAccountId: number;
+
+    beforeAll(async () => {
+      const { data: user } = await client.GET('/me');
+      if (!user || typeof user.id !== 'number') {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const { data: accounts } = await client.GET('/users/{id}/accounts', {
+        params: { path: { id: user.id } },
+      });
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts found for testing convenience methods');
+      }
+
+      accountId = accounts[0].id as number;
+
+      const { data: transactionAccounts } = await client.GET('/users/{id}/transaction_accounts', {
+        params: { path: { id: user.id } },
+      });
+
+      if (transactionAccounts && Array.isArray(transactionAccounts) && transactionAccounts.length > 0) {
+        transactionAccountId = transactionAccounts[0].id as number;
+      }
+    });
+
+    test('should fetch transactions by account using convenience method', async () => {
+      const { data: transactions, error } = await client.transactions.getByAccount(accountId, {
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+      });
+
+      expect(error).toBeUndefined();
+      expect(transactions).toBeDefined();
+      expect(Array.isArray(transactions)).toBe(true);
+    });
+
+    test('should fetch transactions by transaction account using convenience method', async () => {
+      if (!transactionAccountId) {
+        console.log('Skipping transaction account test - no transaction accounts available');
+        return;
+      }
+
+      const { data: transactions, error } = await client.transactions.getByTransactionAccount(transactionAccountId, {
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+      });
+
+      expect(error).toBeUndefined();
+      expect(transactions).toBeDefined();
+      expect(Array.isArray(transactions)).toBe(true);
+    });
+
+    test('should support all query options in convenience methods', async () => {
+      const { data: transactions, error } = await client.transactions.getByAccount(accountId, {
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+        type: 'debit',
+        page: 1,
+      });
+
+      expect(error).toBeUndefined();
+      expect(transactions).toBeDefined();
+      expect(Array.isArray(transactions)).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     test('should handle invalid endpoint gracefully', async () => {
       // Try to fetch a non-existent user
@@ -187,6 +257,39 @@ describe('PocketSmith API Integration Tests', () => {
       expect(data).toBeUndefined();
       expect(error).toBeDefined();
       expect(error).toHaveProperty('error');
+    });
+
+    test('should provide enhanced error serialization', async () => {
+      const { data, error } = await client.GET('/users/{id}', {
+        params: {
+          path: {
+            id: 999999999, // Very unlikely to exist
+          },
+        },
+      });
+
+      expect(error).toBeDefined();
+      
+      // Test that serializeError works with the error
+      const serialized = serializeError(error);
+      expect(typeof serialized).toBe('string');
+      expect(serialized).not.toBe('[object Object]');
+      expect(serialized.length).toBeGreaterThan(0);
+    });
+
+    test('should handle convenience method errors gracefully', async () => {
+      const { data, error } = await client.transactions.getByAccount(999999999, {
+        start_date: '2024-01-01',
+        end_date: '2024-12-31',
+      });
+
+      expect(data).toBeUndefined();
+      expect(error).toBeDefined();
+      
+      // Ensure the error is serializable
+      const serialized = serializeError(error);
+      expect(typeof serialized).toBe('string');
+      expect(serialized).not.toBe('[object Object]');
     });
   });
 });
