@@ -104,11 +104,6 @@ export interface paths {
                 content: {
                     "application/json": {
                         /**
-                         * @description A new email address for the user.
-                         * @example foo@bar.com
-                         */
-                        email?: string;
-                        /**
                          * @description A new name for the user.
                          * @example John Appleseed
                          */
